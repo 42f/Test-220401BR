@@ -93,9 +93,9 @@ const retrieveTransactions = async (accessToken, accounts) => {
       do {
         let data = await getData(accessToken, path);
         path = data?.link?.next;
-        data = cleanUpTransactions(data);
-        if (data) {
-          transactions = [...data, ...transactions];
+        const cleanTransactions = cleanUpTransactions(data);
+        if (cleanTransactions) {
+          transactions = [...cleanTransactions, ...transactions];
         }
       } while (path);
     } catch (error) {
