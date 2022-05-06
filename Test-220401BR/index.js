@@ -46,13 +46,28 @@ const getAccessToken = async (refreshToken) => {
   }
 };
 
-
-
+const getAccountsList = async (accessToken) => {
+  try {
+    const { data } = await axios.get(`${BASE_URL}/accounts`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Could not get the Accounts List');
+  }
+};
 
 const mainTest = async () => {
   try {
+    // Get the refresh token
     const refreshToken = await getRefreshToken();
     const accessToken = await getAccessToken(refreshToken);
+    const accounts = await getAccountsList(accessToken);
+    console.log('GOT THIS', accounts);
   } catch (error) {
     console.error(error);
   }
