@@ -46,40 +46,79 @@ const getAccessToken = async (refreshToken) => {
   }
 };
 
-const getAccountsList = async (accessToken, path) => {
-	try {
-		const { data } = await axios.get(`${BASE_URL}${path}`, {
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
+const getData = async (accessToken, path) => {
+  try {
+    const { data } = await axios.get(`${BASE_URL}${path}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
     return data;
   } catch (error) {
-		console.error(error);
+    console.error(error);
     throw new Error('Could not get the Accounts List');
   }
 };
 
-const retrieveAllAccounts  = async (accessToken) => {
-	let accounts = [];
-	let path = '/accounts'
-	do {
-		const data = await getAccountsList(accessToken, path);
-		path = data?.link?.next;
-		if (data.account) {
-			accounts = [...data?.account, ...accounts];
-		}
-	} while (path);
-}
+const retrieveAllAccounts = async (accessToken) => {
+  let accounts = [];
+  let path = '/accounts';
+  do {
+    const data = await getData(accessToken, path);
+    path = data?.link?.next;
+    if (data.account) {
+      accounts = [...data?.account, ...accounts];
+    }
+  } while (path);
+  return accounts;
+};
+
+const cleanUpTransactions = (data) => {
+  return data.transactions.map((item) => {
+    return {
+      label: item.label,
+      amount: item.amount,
+      currency: item.currency,
+    };
+  });
+};
+
+const retrieveTransactions = async (accessToken, accounts) => {
+  let enrichedAccounts = [];
+  for (let i = 0; i < accounts.length; i++) {
+    let path = `/accounts/${accounts[i].acc_number}/transactions`;
+    let transactions = [];
+    try {
+      do {
+        let data = await getData(accessToken, path);
+        path = data?.link?.next;
+        data = cleanUpTransactions(data);
+        if (data) {
+          transactions = [...data, ...transactions];
+        }
+      } while (path);
+    } catch (error) {
+      continue;
+    }
+
+    const enrichedAccount = {
+      acc_number: accounts[i].acc_number,
+      amount: accounts[i].amount,
+      transactions: transactions,
+    };
+    enrichedAccounts = [enrichedAccount, ...enrichedAccounts];
+  }
+  return enrichedAccounts;
+};
 
 const mainTest = async () => {
   try {
-    // Get the refresh token
     const refreshToken = await getRefreshToken();
     const accessToken = await getAccessToken(refreshToken);
-
     const accounts = await retrieveAllAccounts(accessToken);
+    const formattedOutput = await retrieveTransactions(accessToken, accounts);
+		console.log(JSON.stringify(formattedOutput, null, 4));
   } catch (error) {
     console.error(error);
   }
